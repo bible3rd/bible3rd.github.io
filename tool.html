@@ -4,14 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>正在初始化</title>
-<link href="/style.css?v=20251114" type="text/css" rel="stylesheet">
+<link href="./style.css?v=20251114" type="text/css" rel="stylesheet">
 <script type="module" src="https://pyscript.net/releases/2025.8.1/core.js"></script>
 <py-config class="hidden">
 {
     "packages": ["jinja2"],
     "files": {
-        "/book.json": "book.json",
-        "/dict.json": "dict.json"
+        "./book.json": "book.json",
+        "./dict.json": "dict.json"
     }
 }
 </py-config>
@@ -40,7 +40,7 @@ def render():
     display(HTML(html), target='app', append=False)
 #}}}
 </script>
-<script type="py" src="/main.py?v=20251114"></script>
+<script type="py" src="./main.py?v=20251114"></script>
 </head>
 <body class="bg-orange-100">
     <div id="loading" class="fixed inset-0 bg-orange-100 z-50 center">
