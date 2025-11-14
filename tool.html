@@ -1,0 +1,211 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>正在初始化</title>
+<link href="/style.css?v=20251114" type="text/css" rel="stylesheet">
+<script type="module" src="https://pyscript.net/releases/2025.8.1/core.js"></script>
+<py-config class="hidden">
+{
+    "packages": ["jinja2"],
+    "files": {
+        "/book.json": "book.json",
+        "/dict.json": "dict.json"
+    }
+}
+</py-config>
+<script type="py">
+#{{{
+from pyscript import display, HTML, window
+from pyscript.web import page
+from jinja2 import Template
+import re, json
+
+def py_exec(event):
+    globals()['event'] = event
+    code = event.currentTarget.getAttribute('exec')
+    code = '\n'.join(code.split('\\n'))
+    exec(code, globals())
+    render()
+
+html = page['textarea'][0].value
+tpl = Template(html, variable_start_string='${', variable_end_string='}')
+
+for code in re.findall(r'{#py#(.+?)#}', html, re.S):
+    exec(code, globals())
+
+def render():
+    html = tpl.render(globals())
+    display(HTML(html), target='app', append=False)
+#}}}
+</script>
+<script type="py" src="/main.py?v=20251114"></script>
+</head>
+<body class="bg-orange-100">
+    <div id="loading" class="fixed inset-0 bg-orange-100 z-50 center">
+        <div class="w-12 h-12 border-4 border-orange-900/20 border-t-orange-900 rounded-full animate-spin duration-2000"></div>
+    </div>
+    <div id="app">
+    </div>
+<textarea class="hidden">
+<script>
+document.title = '${BOOK[tabs[tab_id].book].full}${tabs[tab_id].cpt}';
+</script>
+<div id="nav" class="flex gap-1 shadow shadow-orange-900/60 px-5 py-2 pl-30 text-sm leading-1 sticky top-0 bg-orange-100 z-10"><!-- {{{ -->
+    <div class="absolute -bottom-2.5 left-5 flex">
+        <button py-click="py_exec" exec="tabs[tab_id]['cpt'] -= 1; tabs[tab_id]['marks'] = set();" class="disabled:!text-orange-900/50 btn w-12 h-5 font-bold bg-orange-100 !rounded-l-full !rounded-r-none" ${'disabled' if tabs[tab_id].cpt==1 else ''}>&laquo;</button>
+
+        <button py-click="py_exec" exec="tabs[tab_id]['cpt'] += 1; tabs[tab_id]['marks'] = set();" class="disabled:!text-orange-900/50 btn w-12 h-5 font-bold bg-orange-100 !rounded-r-full !rounded-l-none" ${'disabled' if tabs[tab_id].cpt==BOOK[tabs[tab_id]['book']]['cpts']|length else ''}>&raquo;</button>
+    </div>
+
+    <div id="tab" class="flex gap-3 mx-4 text-xs font-bold">
+    {% for t in tabs %}
+        <div class="btn h-6 w-16 flex items-center justify-between group ${'opacity-60' if loop.index0!=tab_id else ''}">
+            <button py-click="py_exec" exec="tab_id=${loop.index0};" class="flex-1 pl-3 h-full flex justify-start items-center">
+                ${t.book}${t.cpt}
+            </button>
+            {% if tabs|length > 1 %}
+            <button py-click="py_exec" exec="tabs.pop(${loop.index0}); \nif ${loop.index0} <= tab_id and tab_id!=0: tab_id -= 1;" class="h-[60%] mr-[3px] px-0.5 hover:bg-orange-900/10 duration-300 rounded invisible group-hover:visible">×</button>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+    <button py-click="py_exec" exec="show_tab_open='book';" class="btn w-8 h-6 font-bold">+</button>
+    <div py-click="py_exec" exec="if event.target==event.currentTarget: show_tab_open=False;" class="${'!hidden' if show_tab_open!='book' else ''} cover center">
+        <div class="bg-orange-100 w-3/4 h-96 p-6">
+            <div class="grid grid-cols-8 gap-5 justify-items-center">
+                {% for book, info in BOOK.items() %}
+                <div class="flex flex-col items-center">
+                    <button py-click="py_exec" exec="show_tab_open='cpt'; selected_book='${book}';" class="btn w-12 h-6">${book}</button>
+                    <div class="text-xs text-orange-900/30 mt-1">${info.full}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div py-click="py_exec" exec="if event.target==event.currentTarget: show_tab_open=False;" class="${'!hidden' if show_tab_open!='cpt' else ''} cover center">
+        <div class="bg-orange-100 w-3/4 h-96 p-6 overflow-y-auto">
+            <div class="grid grid-cols-8 gap-5 justify-items-center">
+                {% if selected_book %}
+                {% for _ in BOOK[selected_book].cpts %}
+                <button py-click="py_exec" exec="show_tab_open=False; tabs.append({'book': '${selected_book}', 'cpt': ${loop.index} }); tab_id = len(tabs)-1; window.scroll(0, 0);" class="btn w-12 h-6">${loop.index}</button>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div><!-- }}} -->
+<div id="txt" class="mt-3"><!-- {{{ -->
+{#py#
+def marks_toggle(i):
+    marks = tabs[tab_id].setdefault('marks', set())
+    marks.remove(i) if i in marks else marks.add(i)
+#}
+{% set t = tabs[tab_id] %}
+{% for s in BOOK[t.book].cpts[t.cpt-1] %}
+  <div class="flex ${'bg-orange-200' if loop.index in tabs[tab_id].marks else ''}">
+    <div py-click="py_exec" exec="marks_toggle(${loop.index});" class="w-4/12 text-lg border-r-2 border-orange-900 px-2 py-1 cursor-pointer">
+      <span class="text-red-900 text-xs mr-1">${loop.index}</span>
+      ${s.unv}
+    </div>
+{#py#
+def reformat_sn(sec):
+  def replace(m):
+    sn = m.group(1)
+
+    highlight = ''
+    for hb in H.sn2hb_lst(sn):
+        if len(plst_hb[hb]) <= 10:
+            highlight += ' text-orange-900 '
+        if 1 < len(plst_hb[hb]) <= 3:
+            highlight += ' underline '
+
+    return f'''<span py-click="py_exec" exec="words.append({{'sn': {sn}, 'id': 0}}); dict_show = True;"
+      class="{highlight} text-xs tracking-tight scale-90 inline-block cursor-pointer">
+        { '~' if sn in HIDE_SN else f'&lt;{sn}&gt;' }
+      </span>'''
+
+  return r_sn.sub(replace, sec)
+#}
+    <div class="w-8/12 py-1 border-b text-xs text-orange-900/30 px-2 leading-5 tracking-widest">
+      ${reformat_sn(s.sn)}
+    </div>
+  </div>
+{% endfor %}
+</div><!-- }}} -->
+<div id="dict" class="sticky bottom-0 w-full h-96 flex flex-col bg-black/70 backdrop-blur-sm text-white ${'!hidden' if not dict_show else ''}"><!-- {{{ -->
+    <div class="absolute right-2 -top-3 text-xs text-gray-800 flex gap-2">
+        <button py-click="py_exec" exec="words = [];" class="px-2 py-1 bg-gray-200/80 backdrop-blur rounded">全部清空</button>
+        <button py-click="py_exec" exec="dict_show = False;" class="px-2 py-1 bg-gray-200/80 backdrop-blur rounded">隐藏窗口</button>
+    </div>
+    <div class="flex gap-3 overflow-auto flex-1 px-3 mt-2">
+    {% for word in words %}
+        {% if 'sn' in word %}
+            {% set hb = H.sn2hb_lst(word.sn)[word.id] %}
+        {% elif 'hb' in word %}
+            {% set hb = word.hb %}
+        {% endif %}
+        <div class="w-42 flex-none">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="flex flex-col h-12">
+                        <span>${hb}</span>
+                        {% if 'sn' in word %}
+                        <span class="text-xs">&lt;${word.sn}&gt;</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex text-xs w-16 h-12 flex-none flex-wrap font-bold scale-75">
+                            <button class="h-1/2 w-1/2 bg-white/10 border-r border-b border-white/10" title="${plst_hb[hb]|length}" disabled>ABC</button>
+                            {% set docf = plst_hb.get(H.atbash(hb), [])|length %}
+                            <button py-click="py_exec" exec="words.append({'hb': '${H.atbash(hb)}'});" class="h-1/2 w-1/2 bg-white/10 ${'opacity-30' if docf==0 else ''} border-b border-white/20" title="${docf}" ${'disabled' if docf==0 else ''}>ZYX</button>
+                            {% set docf = plst_hb.get(hb[::-1], [])|length %}
+                            <button py-click="py_exec" exec="words.append({'hb': '${hb[::-1]}'});" class="h-1/2 w-1/2 bg-white/10 ${'opacity-30' if docf==0 else ''} border-r border-white/20" title="${docf}" ${'disabled' if docf==0 else ''}>CBA</button>
+                            {% set docf = plst_hb.get(H.atbash(hb[::-1]), [])|length %}
+                            <button py-click="py_exec" exec="words.append({'hb': '${H.atbash(hb[::-1])}'});" class="h-1/2 w-1/2 bg-white/10 ${'opacity-30' if docf==0 else ''}" title="${docf}" ${'disabled' if docf==0 else ''}>XYZ</button>
+                    </div>
+                    {% if H.sn2hb_lst(word.sn)|length > 1 %}
+                    <div class="flex gap-1">
+                            {% for _ in H.sn2hb_lst(word.sn) %}
+                            <button py-click="py_exec" exec="words.append({'sn': ${word.sn}, 'id': ${loop.index0}});" ${'disabled' if loop.index0==word.id else ''} class="w-2 h-2 rounded-full bg-white/30 disabled:bg-white/80"></button>
+                            {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <button py-click="py_exec" exec="words.pop(${loop.index0});" class="flex-none w-4 h-4 rounded bg-white/20 center font-bold">×</button>
+            </div>
+{#py#
+def get_hit_cpts(words):
+    def get_plst(word):
+        hb = H.sn2hb_lst(word['sn'])[word['id']] if 'sn' in word else word['hb']
+        return plst_hb[hb]
+
+    return [ (book, cpt)
+        for book, info in BOOK.items()
+        for cpt in range(1, len(info['cpts'])+1)
+        if any([ (book, cpt) in get_plst(word) for word in words ])
+    ]
+#}
+            <div class="text-xs">
+            {% set hits = plst_hb[hb] %}
+            {% for book, cpt in get_hit_cpts(words) %}
+                {% if (book, cpt) in hits %}
+                    {% set marks = hits[(book, cpt)]|join(',') %}
+                {% else %}
+                    {% set marks = '' %}
+                {% endif %}
+                <div py-click="py_exec" exec="tabs.append({'book': '${book}', 'cpt': ${cpt}, 'marks': { ${marks} }} ); tab_id = len(tabs)-1; window.scroll(0, 0);" class="truncate border-b border-white/10 border-dotted py-1 w-full cursor-pointer hover:bg-white/10 duration-300 px-0.5" title="${info.cpts[cpt-1]|length}">
+                {% if marks %}
+                    ${book}${cpt}:${marks}
+                {% else %}
+                    &nbsp;
+                {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+    </div><!-- }}} -->
+</textarea>
+</body>
+</html>
